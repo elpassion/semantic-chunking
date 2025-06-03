@@ -1,15 +1,15 @@
 {
-  "name": "semantic-chunking",
+  "name": "@elpassion/semantic-chunking",
   "version": "2.4.3",
   "description": "Semantically create chunks from large texts. Useful for workflows involving large language models (LLMs).",
-  "homepage": "https://www.equilllabs.com/projects/semantic-chunking",
+  "homepage": "https://www.elpassion.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jparkerweb/semantic-chunking.git"
+    "url": "https://github.com/elpassion/semantic-chunking.git"
   },
   "bugs": {
-    "url": "https://github.com/jparkerweb/semantic-chunking/issues",
-    "email": "equilllabs@gmail.com"
+    "url": "https://github.com/elpassion/semantic-chunking/issues",
+    "email": "contact@elpassion.com"
   },
   "main": "chunkit.js",
   "type": "module",
@@ -33,7 +33,7 @@
     "ml",
     "BERT"
   ],
-  "author": "jparkerweb@gmail.com",
+  "author": "contact@elpassion.com",
   "license": "ISC",
   "scripts": {
     "clean-models": "find ./models -type f ! -name '*.url' -delete",

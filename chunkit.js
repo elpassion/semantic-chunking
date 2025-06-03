@@ -20,7 +20,7 @@ import {
   applyPrefixToChunk,
 } from "./chunkingUtils.js";
 import { readFileSync } from "fs";
-export { LocalEmbeddingModel } from "./embeddingUtils.js";
+export { LocalEmbeddingModel, OpenAIEmbedding } from "./embeddingUtils.js";
 
 const packageJson = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url))

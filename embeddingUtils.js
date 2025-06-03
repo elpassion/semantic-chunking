@@ -85,3 +85,80 @@ export class LocalEmbeddingModel {
     };
   }
 }
+
+// --------------------------
+// -- OpenAIEmbedding class --
+// --------------------------
+export class OpenAIEmbedding {
+  constructor(openaiClient) {
+    if (!openaiClient) {
+      throw new Error("OpenAI client is required in constructor");
+    }
+    this.openaiClient = openaiClient;
+    this.modelName = null;
+    this.embeddingCache = new LRUCache({
+      max: 500,
+      maxSize: 50_000_000,
+      sizeCalculation: (value, key) => {
+        return value.length * 4 + key.length;
+      },
+      ttl: 1000 * 60 * 60,
+    });
+  }
+
+  async initialize(modelName = "text-embedding-3-small") {
+    this.modelName = modelName;
+    this.embeddingCache.clear();
+
+    return {
+      modelName: modelName,
+      dtype: "api", // API-based, no dtype
+    };
+  }
+
+  async createEmbedding(text) {
+    if (!this.modelName) {
+      throw new Error("Model not initialized. Call initialize() first.");
+    }
+
+    const cached = this.embeddingCache.get(text);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const response = await this.openaiClient.embeddings.create({
+        model: this.modelName,
+        input: text,
+      });
+
+      const embedding = response.data[0].embedding;
+      this.embeddingCache.set(text, embedding);
+      return embedding;
+    } catch (error) {
+      throw new Error(`OpenAI API error: ${error.message}`);
+    }
+  }
+
+  async tokenize(text, options = {}) {
+    if (!this.modelName) {
+      throw new Error("Model not initialized. Call initialize() first.");
+    }
+
+    // Rough approximation for tokenization since OpenAI doesn't provide a direct tokenization endpoint
+    // This is a simplified estimation based on common tokenization patterns
+    // For more accurate results, consider using a library like 'tiktoken' for OpenAI tokenization
+    const approximateTokenCount = Math.ceil(text.length / 4); // Rough estimation: 1 token ≈ 4 characters
+
+    return {
+      size: approximateTokenCount,
+    };
+  }
+
+  getModelInfo() {
+    return {
+      modelName: this.modelName,
+      dtype: "api",
+    };
+  }
+}
