@@ -3,6 +3,7 @@
 NPM Package for Semantically creating chunks from large texts. Useful for workflows involving large language models (LLMs).
 
 ### Maintained by
+
 <a href="https://www.equilllabs.com">
   <img src="https://raw.githubusercontent.com/jparkerweb/eQuill-Labs/refs/heads/main/src/static/images/logo-text-outline.png" alt="eQuill Labs" height="32">
 </a>
@@ -16,16 +17,19 @@ NPM Package for Semantically creating chunks from large texts. Useful for workfl
 - Quantized model support
 - Chunk prefix support for RAG workflows
 - Web UI for experimenting with settings
+- Dependency injection for model reuse and flexibility
 
 ## Semantic Chunking Workflow
+
 _how it works_
 
-1. **Sentence Splitting**: The input text is split into an array of sentences.
-2. **Embedding Generation**: A vector is created for each sentence using the specified ONNX model.
-3. **Similarity Calculation**: Cosine similarity scores are calculated for each sentence pair.
-4. **Chunk Formation**: Sentences are grouped into chunks based on the similarity threshold and max token size.
-5. **Chunk Rebalancing**: Optionally, similar adjacent chunks are combined into larger ones up to the max token size.
-6. **Output**: The final chunks are returned as an array of objects, each containing the properties described above.
+1. **Model Initialization**: An embedding model is initialized once and can be reused across multiple operations.
+2. **Sentence Splitting**: The input text is split into an array of sentences.
+3. **Embedding Generation**: A vector is created for each sentence using the specified ONNX model.
+4. **Similarity Calculation**: Cosine similarity scores are calculated for each sentence pair.
+5. **Chunk Formation**: Sentences are grouped into chunks based on the similarity threshold and max token size.
+6. **Chunk Rebalancing**: Optionally, similar adjacent chunks are combined into larger ones up to the max token size.
+7. **Output**: The final chunks are returned as an array of objects, each containing the properties described above.
 
 ## Installation
 
@@ -35,54 +39,75 @@ npm install semantic-chunking
 
 ## Usage
 
-Basic usage:
+All functions now require a pre-initialized model instance for better performance and flexibility:
 
 ```javascript
-import { chunkit } from 'semantic-chunking';
+import { EmbeddingModel, chunkit } from 'semantic-chunking';
+
+// Initialize the model once
+const model = new EmbeddingModel();
+await model.initialize('Xenova/all-MiniLM-L6-v2');
 
 const documents = [
     { document_name: "document1", document_text: "contents of document 1..." },
     { document_name: "document2", document_text: "contents of document 2..." },
     ...
 ];
-const chunkitOptions = {};
-const myChunks = await chunkit(documents, chunkitOptions);
 
+const myChunks = await chunkit(documents, model, {
+    maxTokenSize: 500,
+    similarityThreshold: 0.5
+});
 ```
 
-**NOTE** 🚨 The Embedding model (`onnxEmbeddingModel`) will be downloaded to this package's cache directory the first it is run (file size will depend on the specified model; see the model's table ).
+**NOTE** 🚨 The Embedding model will be downloaded to your specified cache directory the first time it is run (file size will depend on the specified model; see the model's table below).
+
+## EmbeddingModel Class
+
+The `EmbeddingModel` class manages model initialization and provides embedding/tokenization functionality:
+
+```javascript
+import { EmbeddingModel } from 'semantic-chunking';
+
+// Create and initialize the model
+const model = new EmbeddingModel();
+await model.initialize(
+  'Xenova/all-MiniLM-L6-v2',  // Model name
+  'q8',                        // Data type (fp32, fp16, q8, q4)
+  './models',                  // Local model path (optional)
+  './models'                   // Model cache directory (optional)
+);
+
+// Get model information
+console.log(model.getModelInfo()); // { modelName: '...', dtype: '...' }
+
+// Use the model for embeddings
+const embedding = await model.createEmbedding("sample text");
+
+// Use the model for tokenization
+const tokens = await model.tokenize("sample text", { padding: true });
+```
 
 ## Parameters
 
-`chunkit` accepts an array of document objects and an optional configuration object. Here are the details for each parameter:
+### chunkit(documents, model, options)
 
-- `documents`: array of documents. each document is an object containing `document_name` and `document_text`.
-  ```
-  documents = [
-    { document_name: "document1", document_text: "..." },
-    { document_name: "document2", document_text: "..." },
-    ...
-  ]
-  ```
+- `documents`: Array of documents. Each document is an object containing `document_name` and `document_text`.
+- `model`: An initialized `EmbeddingModel` instance.
+- `options`: Configuration object with the following properties:
 
-- **Chunkit Options Object:**
-  
   - `logging`: Boolean (optional, default `false`) - Enables logging of detailed processing steps.
   - `maxTokenSize`: Integer (optional, default `500`) - Maximum token size for each chunk.
   - `similarityThreshold`: Float (optional, default `0.5`) - Threshold to determine if sentences are similar enough to be in the same chunk. A higher value demands higher similarity.
   - `dynamicThresholdLowerBound`: Float (optional, default `0.4`) - Minimum possible dynamic similarity threshold.
   - `dynamicThresholdUpperBound`: Float (optional, default `0.8`) - Maximum possible dynamic similarity threshold.
   - `numSimilaritySentencesLookahead`: Integer (optional, default `3`) - Number of sentences to look ahead for calculating similarity.
-  - `combineChunks`: Boolean (optional, default `true`) - Determines whether to reblance and combine chunks into larger ones up to the max token limit.
+  - `combineChunks`: Boolean (optional, default `true`) - Determines whether to rebalance and combine chunks into larger ones up to the max token limit.
   - `combineChunksSimilarityThreshold`: Float (optional, default `0.5`) - Threshold for combining chunks based on similarity during the rebalance and combining phase.
-  - `onnxEmbeddingModel`: String (optional, default `Xenova/all-MiniLM-L6-v2`) - ONNX model used for creating embeddings.
-  - `dtype`: String (optional, default `fp32`) - Precision of the embedding model (options: `fp32`, `fp16`, `q8`, `q4`).
-  - `localModelPath`: String (optional, default `null`) - Local path to save and load models (example: `./models`).
-  - `modelCacheDir`: String (optional, default `null`) - Directory to cache downloaded models (example: `./models`).
-  - `returnEmbedding`: Boolean (optional, default `false`) - If set to `true`, each chunk will include an embedding vector. This is useful for applications that require semantic understanding of the chunks. The embedding model will be the same as the one specified in `onnxEmbeddingModel`.
-  - `returnTokenLength`: Boolean (optional, default `false`) - If set to `true`, each chunk will include the token length. This can be useful for understanding the size of each chunk in terms of tokens, which is important for token-based processing limits. The token length is calculated using the tokenizer specified in `onnxEmbeddingModel`.
-  - `chunkPrefix`: String (optional, default `null`) - A prefix to add to each chunk (e.g., "search_document: "). This is particularly useful when using embedding models that are trained with specific task prefixes, like the nomic-embed-text-v1.5 model. The prefix is added before calculating embeddings or token lengths.
-  - `excludeChunkPrefixInResults`: Boolean (optional, default `false`) - If set to `true`, the chunk prefix will be removed from the results. This is useful when you want to remove the prefix from the results while still maintaining the prefix for embedding calculations.
+  - `returnEmbedding`: Boolean (optional, default `false`) - If set to `true`, each chunk will include an embedding vector.
+  - `returnTokenLength`: Boolean (optional, default `true`) - If set to `true`, each chunk will include the token length.
+  - `chunkPrefix`: String (optional, default `null`) - A prefix to add to each chunk (e.g., "search_document: ").
+  - `excludeChunkPrefixInResults`: Boolean (optional, default `false`) - If set to `true`, the chunk prefix will be removed from the results.
 
 ## Output
 
@@ -99,6 +124,7 @@ The output is an array of chunks, each containing the following properties:
 - `token_length`: Integer - The token length (if `returnTokenLength` is `true`).
 
 ## **NOTE** 🚨 Every Embedding Model behaves differently!
+
 It is important to understand how the model you choose behaves when chunking your text.
 It is highly recommended to tweak all the parameters using the Web UI to get the best results for your use case.
 [Web UI README](webui/README.md)
@@ -108,17 +134,24 @@ It is highly recommended to tweak all the parameters using the Web UI to get the
 Example 1: Basic usage with custom similarity threshold:
 
 ```javascript
-import { chunkit } from 'semantic-chunking';
+import { EmbeddingModel, chunkit } from 'semantic-chunking';
 import fs from 'fs';
 
 async function main() {
+    // Initialize model
+    const model = new EmbeddingModel();
+    await model.initialize('Xenova/all-MiniLM-L6-v2');
+  
     const documents = [ 
         {
             document_name: "test document", 
             document_text: await fs.promises.readFile('./test.txt', 'utf8') 
         }
     ];
-    let myChunks = await chunkit(documents, { similarityThreshold: 0.4 });
+  
+    let myChunks = await chunkit(documents, model, { 
+        similarityThreshold: 0.4 
+    });
 
     myChunks.forEach((chunk, index) => {
         console.log(`\n-- Chunk ${index + 1} --`);
@@ -126,15 +159,15 @@ async function main() {
     });
 }
 main();
-
 ```
 
 Example 2: Chunking with a small max token size:
 
 ```javascript
-import { chunkit } from 'semantic-chunking';
+import { EmbeddingModel, chunkit } from 'semantic-chunking';
 
 const frogText = "A frog hops into a deli and croaks to the cashier, \"I'll have a sandwich, please.\" The cashier, surprised, quickly makes the sandwich and hands it over. The frog takes a big bite, looks around, and then asks, \"Do you have any flies to go with this?\" The cashier, taken aback, replies, \"Sorry, we're all out of flies today.\" The frog shrugs and continues munching on its sandwich, clearly unfazed by the lack of fly toppings. Just another day in the life of a sandwich-loving amphibian! 🐸🥪";
+
 const documents = [
     {
         document_name: "frog document",
@@ -143,15 +176,53 @@ const documents = [
 ];
 
 async function main() {
-    let myFrogChunks = await chunkit(documents, { maxTokenSize: 65 });
+    const model = new EmbeddingModel();
+    await model.initialize('Xenova/all-MiniLM-L6-v2');
+  
+    let myFrogChunks = await chunkit(documents, model, { 
+        maxTokenSize: 65 
+    });
     console.log("myFrogChunks", myFrogChunks);
 }
 main();
-
 ```
 
-Look at the `example\example-chunkit.js` file for a more complex example of using all the optional parameters.
+Example 3: Reusing model across multiple operations:
 
+```javascript
+import { EmbeddingModel, chunkit, cramit } from 'semantic-chunking';
+
+async function processMultipleDocumentSets() {
+  // Initialize model once
+  const model = new EmbeddingModel();
+  await model.initialize('Xenova/all-MiniLM-L6-v2', 'q8');
+  
+  // Process first set of documents
+  const set1 = [{ document_name: "doc1", document_text: "..." }];
+  const chunks1 = await chunkit(set1, model, {
+    maxTokenSize: 500,
+    similarityThreshold: 0.5
+  });
+  
+  // Process second set with different settings, reusing the same model
+  const set2 = [{ document_name: "doc2", document_text: "..." }];
+  const chunks2 = await cramit(set2, model, {
+    maxTokenSize: 300
+  });
+  
+  return { chunks1, chunks2 };
+}
+```
+
+See `dependency-injection-example.js` for a complete working example.
+
+## Benefits of the New Approach
+
+- **Model Reuse**: Initialize a model once and use it across multiple operations
+- **Performance**: Avoid repeated model initialization overhead
+- **Flexibility**: Easy to swap different embedding models without changing chunking logic
+- **Memory Management**: Better control over model lifecycle
+- **Cleaner API**: Explicit dependency injection makes the code more maintainable
 
 ## Tuning
 
@@ -167,7 +238,7 @@ The behavior of the `chunkit` function can be finely tuned using several optiona
 
 - **Type**: Integer
 - **Default**: `500`
-- **Description**: Sets the maximum number of tokens allowed in a single chunk. Smaller values result in smaller, more numerous chunks, while larger values can create fewer, larger chunks. It’s crucial for maintaining manageable chunk sizes when processing large texts.
+- **Description**: Sets the maximum number of tokens allowed in a single chunk. Smaller values result in smaller, more numerous chunks, while larger values can create fewer, larger chunks. It's crucial for maintaining manageable chunk sizes when processing large texts.
 
 ### `similarityThreshold`
 
@@ -210,22 +281,21 @@ The behavior of the `chunkit` function can be finely tuned using several optiona
 - **Type**: String
 - **Default**: `Xenova/all-MiniLM-L6-v2`
 - **Description**: Specifies the model used to generate sentence embeddings. Different models may yield different qualities of embeddings, affecting the chunking quality, especially in multilingual contexts.
-- **Resource Link**: [ONNX Embedding Models](https://huggingface.co/models?pipeline_tag=feature-extraction&library=onnx&sort=trending)  
-  Link to a filtered list of embedding models converted to ONNX library format by Xenova.  
-  Refer to the Model table below for a list of suggested models and their sizes (choose a multilingual model if you need to chunk text other than English).  
+- **Resource Link**: [ONNX Embedding Models](https://huggingface.co/models?pipeline_tag=feature-extraction&library=onnx&sort=trending)
+  Link to a filtered list of embedding models converted to ONNX library format by Xenova.
+  Refer to the Model table below for a list of suggested models and their sizes (choose a multilingual model if you need to chunk text other than English).
 
 #### `dtype`
 
 - **Type**: String
 - **Default**: `fp32`
 - **Description**: Indicates the precision of the embedding model. Options are `fp32`, `fp16`, `q8`, `q4`.
-`fp32` is the highest precision but also the largest size and slowest to load. `q8` is a good compromise between size and speed if the model supports it. All models support `fp32`, but only some support `fp16`, `q8`, and `q4`.
-
+  `fp32` is the highest precision but also the largest size and slowest to load. `q8` is a good compromise between size and speed if the model supports it. All models support `fp32`, but only some support `fp16`, `q8`, and `q4`.
 
 #### Curated ONNX Embedding Models
 
-| Model                                        | Precision      | Link                                                                                                                                       | Size                   |
-| -------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| Model                                        | Precision      | Link                                                                                                                                    | Size                   |
+| -------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
 | nomic-ai/nomic-embed-text-v1.5               | fp32, q8       | [https://huggingface.co/nomic-ai/nomic-embed-text-v1.5](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5)                             | 548 MB, 138 MB         |
 | thenlper/gte-base                            | fp32           | [https://huggingface.co/thenlper/gte-base](https://huggingface.co/thenlper/gte-base)                                                       | 436 MB                 |
 | Xenova/all-MiniLM-L6-v2                      | fp32, fp16, q8 | [https://huggingface.co/Xenova/all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2)                                           | 23 MB, 45 MB, 90 MB    |
@@ -258,39 +328,25 @@ The Semantic Chunking Web UI allows you to experiment with the chunking paramete
 
 ## `cramit` - 🧼 The Quick & Dirty
 
-There is an additional function you can import to just "cram" sentences together till they meet your target token size for when you just need quick, high desity chunks.
+There is an additional function you can import to just "cram" sentences together till they meet your target token size for when you just need quick, high density chunks.
 
+### cramit(documents, model, options)
 
-## Parameters
+- `documents`: Array of documents. Each document is an object containing `document_name` and `document_text`.
+- `model`: An initialized `EmbeddingModel` instance.
+- `options`: Configuration object with the following properties:
 
-`cramit` accepts an array of document objects and an optional configuration object. Here are the details for each parameter:
-
-- `documents`: array of documents. each document is an object containing `document_name` and `document_text`.
-  ```
-  documents = [
-    { document_name: "document1", document_text: "..." },
-    { document_name: "document2", document_text: "..." },
-    ...
-  ]
-  ```
-
-- **Cramit Options Object:**
-  
   - `logging`: Boolean (optional, default `false`) - Enables logging of detailed processing steps.
   - `maxTokenSize`: Integer (optional, default `500`) - Maximum token size for each chunk.
-  - `onnxEmbeddingModel`: String (optional, default `Xenova/all-MiniLM-L6-v2`) - ONNX model used for creating embeddings.
-  - `dtype`: String (optional, default `fp32`) - Precision of the embedding model (options: `fp32`, `fp16`, `q8`, `q4`).
-  - `localModelPath`: String (optional, default `null`) - Local path to save and load models (example: `./models`).
-  - `modelCacheDir`: String (optional, default `null`) - Directory to cache downloaded models (example: `./models`).
-  - `returnEmbedding`: Boolean (optional, default `false`) - If set to `true`, each chunk will include an embedding vector. This is useful for applications that require semantic understanding of the chunks. The embedding model will be the same as the one specified in `onnxEmbeddingModel`.
-  - `returnTokenLength`: Boolean (optional, default `false`) - If set to `true`, each chunk will include the token length. This can be useful for understanding the size of each chunk in terms of tokens, which is important for token-based processing limits. The token length is calculated using the tokenizer specified in `onnxEmbeddingModel`.
-  - `chunkPrefix`: String (optional, default `null`) - A prefix to add to each chunk (e.g., "search_document: "). This is particularly useful when using embedding models that are trained with specific task prefixes, like the nomic-embed-text-v1.5 model. The prefix is added before calculating embeddings or token lengths.
-  - `excludeChunkPrefixInResults`: Boolean (optional, default `false`) - If set to `true`, the chunk prefix will be removed from the results. This is useful when you want to remove the prefix from the results while still maintaining the prefix for embedding calculations.
+  - `returnEmbedding`: Boolean (optional, default `false`) - If set to `true`, each chunk will include an embedding vector.
+  - `returnTokenLength`: Boolean (optional, default `true`) - If set to `true`, each chunk will include the token length.
+  - `chunkPrefix`: String (optional, default `null`) - A prefix to add to each chunk (e.g., "search_document: ").
+  - `excludeChunkPrefixInResults`: Boolean (optional, default `false`) - If set to `true`, the chunk prefix will be removed from the results.
 
 Basic usage:
 
 ```javascript
-import { cramit } from 'semantic-chunking';
+import { EmbeddingModel, cramit } from 'semantic-chunking';
 
 let frogText = "A frog hops into a deli and croaks to the cashier, \"I'll have a sandwich, please.\" The cashier, surprised, quickly makes the sandwich and hands it over. The frog takes a big bite, looks around, and then asks, \"Do you have any flies to go with this?\" The cashier, taken aback, replies, \"Sorry, we're all out of flies today.\" The frog shrugs and continues munching on its sandwich, clearly unfazed by the lack of fly toppings. Just another day in the life of a sandwich-loving amphibian! 🐸🥪";
 
@@ -301,16 +357,16 @@ documents.push({
     document_text: frogText
 });
 
-// call the cramit function passing in the documents array and the options object
+// call the cramit function passing in the documents array, model, and options object
 async function main() {
-    let myFrogChunks = await cramit(documents, { maxTokenSize: 65 });
+    const model = new EmbeddingModel();
+    await model.initialize('Xenova/all-MiniLM-L6-v2');
+  
+    let myFrogChunks = await cramit(documents, model, { maxTokenSize: 65 });
     console.log("myFrogChunks", myFrogChunks);
 }
 main();
-
 ```
-
-Look at the `example\example-cramit.js` file in the root of this project for a more complex example of using all the optional parameters.
 
 ---
 
@@ -318,36 +374,22 @@ Look at the `example\example-cramit.js` file in the root of this project for a m
 
 There is an additional function you can import to just split sentences.
 
+### sentenceit(documents, model, options)
 
-## Parameters
+- `documents`: Array of documents. Each document is an object containing `document_name` and `document_text`.
+- `model`: An initialized `EmbeddingModel` instance (required only if `returnEmbedding` is true).
+- `options`: Configuration object with the following properties:
 
-`sentenceit` accepts an array of document objects and an optional configuration object. Here are the details for each parameter:
-
-- `documents`: array of documents. each document is an object containing `document_name` and `document_text`.
-  ```
-  documents = [
-    { document_name: "document1", document_text: "..." },
-    { document_name: "document2", document_text: "..." },
-    ...
-  ]
-  ```
-
-- **Sentenceit Options Object:**
-  
   - `logging`: Boolean (optional, default `false`) - Enables logging of detailed processing steps.
-  - `onnxEmbeddingModel`: String (optional, default `Xenova/all-MiniLM-L6-v2`) - ONNX model used for creating embeddings.
-  - `dtype`: String (optional, default `fp32`) - Precision of the embedding model (options: `fp32`, `fp16`, `q8`, `q4`).
-  - `localModelPath`: String (optional, default `null`) - Local path to save and load models (example: `./models`).
-  - `modelCacheDir`: String (optional, default `null`) - Directory to cache downloaded models (example: `./models`).
-  - `returnEmbedding`: Boolean (optional, default `false`) - If set to `true`, each chunk will include an embedding vector. This is useful for applications that require semantic understanding of the chunks. The embedding model will be the same as the one specified in `onnxEmbeddingModel`.
-  - `returnTokenLength`: Boolean (optional, default `false`) - If set to `true`, each chunk will include the token length. This can be useful for understanding the size of each chunk in terms of tokens, which is important for token-based processing limits. The token length is calculated using the tokenizer specified in `onnxEmbeddingModel`.
-  - `chunkPrefix`: String (optional, default `null`) - A prefix to add to each chunk (e.g., "search_document: "). This is particularly useful when using embedding models that are trained with specific task prefixes, like the nomic-embed-text-v1.5 model. The prefix is added before calculating embeddings or token lengths.
-  - `excludeChunkPrefixInResults`: Boolean (optional, default `false`) - If set to `true`, the chunk prefix will be removed from the results. This is useful when you want to remove the prefix from the results while still maintaining the prefix for embedding calculations.
+  - `returnEmbedding`: Boolean (optional, default `false`) - If set to `true`, each chunk will include an embedding vector.
+  - `returnTokenLength`: Boolean (optional, default `false`) - If set to `true`, each chunk will include the token length.
+  - `chunkPrefix`: String (optional, default `null`) - A prefix to add to each chunk (e.g., "search_document: ").
+  - `excludeChunkPrefixInResults`: Boolean (optional, default `false`) - If set to `true`, the chunk prefix will be removed from the results.
 
 Basic usage:
 
 ```javascript
-import { sentenceit } from 'semantic-chunking';
+import { EmbeddingModel, sentenceit } from 'semantic-chunking';
 
 let duckText = "A duck waddles into a bakery and quacks to the baker, \"I'll have a loaf of bread, please.\" The baker, amused, quickly wraps the loaf and hands it over. The duck takes a nibble, looks around, and then asks, \"Do you have any seeds to go with this?\" The baker, chuckling, replies, \"Sorry, we're all out of seeds today.\" The duck nods and continues nibbling on its bread, clearly unfazed by the lack of seed toppings. Just another day in the life of a bread-loving waterfowl! 🦆🍞";
 
@@ -358,16 +400,16 @@ documents.push({
     document_text: duckText
 });
 
-// call the sentenceit function passing in the documents array and the options object
+// call the sentenceit function passing in the documents array, model, and options object
 async function main() {
-    let myDuckChunks = await sentenceit(documents, { returnEmbedding: true });
+    const model = new EmbeddingModel();
+    await model.initialize('Xenova/all-MiniLM-L6-v2');
+  
+    let myDuckChunks = await sentenceit(documents, model, { returnEmbedding: true });
     console.log("myDuckChunks", myDuckChunks);
 }
 main();
-
 ```
-
-Look at the `example\example-sentenceit.js` file in the root of this project for a more complex example of using all the optional parameters.
 
 ---
 
@@ -385,7 +427,14 @@ Run the `npm run download-models` command to download the models to the `models`
 If you are using this library for a RAG application, consider using the `chunkPrefix` option to add a prefix to each chunk. This can help improve the quality of the embeddings and reduce the amount of context needed to be passed to the LLM for embedding models that support task prefixes.
 
 Chunk your large document like this:
+
 ```javascript
+import { EmbeddingModel, chunkit } from 'semantic-chunking';
+import fs from 'fs';
+
+const model = new EmbeddingModel();
+await model.initialize('Xenova/all-MiniLM-L6-v2');
+
 const largeDocumentText = await fs.promises.readFile('./large-document.txt', 'utf8');
 const documents = [ 
     {
@@ -393,15 +442,27 @@ const documents = [
         document_text: largeDocumentText
     }
 ];
-const myDocumentChunks = await chunkit(documents, { chunkPrefix: "search_document", returnEmbedding: true });
+const myDocumentChunks = await chunkit(documents, model, { 
+    chunkPrefix: "search_document", 
+    returnEmbedding: true 
+});
 ```
 
 Get your search queries ready like this (use cramit for a quick large chunk):
+
 ```javascript
+import { EmbeddingModel, cramit } from 'semantic-chunking';
+
+const model = new EmbeddingModel();
+await model.initialize('Xenova/all-MiniLM-L6-v2');
+
 const documents = [
     { document_text: "What is the capital of France?" } 
 ];
-const mySearchQueryChunk = await cramit(documents, { chunkPrefix: "search_query", returnEmbedding: true });
+const mySearchQueryChunk = await cramit(documents, model, { 
+    chunkPrefix: "search_query", 
+    returnEmbedding: true 
+});
 ```
 
 Now you can use the `myDocumentChunks` and `mySearchQueryChunk` results in your RAG application, feed them to a vector database, or find the closest match using cosine similarity in memory. The possibilities are many!
@@ -411,5 +472,7 @@ Happy Chunking!
 ---
 
 ## Appreciation
+
 If you enjoy this library please consider sending me a tip to support my work 😀
+
 ### [🍵 tip me here](https://ko-fi.com/jparkerweb)

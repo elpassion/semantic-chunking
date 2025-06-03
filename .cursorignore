@@ -3,7 +3,7 @@
 .github/
 node_modules/
 models/
-example/
+example/*.txt
 highlightjs/
 
 # file patterns to ignore during indexing

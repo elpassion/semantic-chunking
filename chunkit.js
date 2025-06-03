@@ -10,11 +10,7 @@
 
 import { parseSentences } from "sentence-parse";
 import { DEFAULT_CONFIG } from "./config.js";
-import {
-  initializeEmbeddingUtils,
-  tokenizer,
-  createEmbedding,
-} from "./embeddingUtils.js";
+import { EmbeddingModel } from "./embeddingUtils.js";
 import {
   computeAdvancedSimilarities,
   adjustThreshold,
@@ -39,11 +35,15 @@ export async function printVersion() {
   );
 }
 
+// Export the EmbeddingModel class for external initialization
+export { EmbeddingModel };
+
 // ---------------------------
 // -- Main chunkit function --
 // ---------------------------
 export async function chunkit(
   documents,
+  model,
   {
     logging = DEFAULT_CONFIG.LOGGING,
     maxTokenSize = DEFAULT_CONFIG.MAX_TOKEN_SIZE,
@@ -53,10 +53,6 @@ export async function chunkit(
     numSimilaritySentencesLookahead = DEFAULT_CONFIG.NUM_SIMILARITY_SENTENCES_LOOKAHEAD,
     combineChunks = DEFAULT_CONFIG.COMBINE_CHUNKS,
     combineChunksSimilarityThreshold = DEFAULT_CONFIG.COMBINE_CHUNKS_SIMILARITY_THRESHOLD,
-    onnxEmbeddingModel = DEFAULT_CONFIG.ONNX_EMBEDDING_MODEL,
-    dtype = DEFAULT_CONFIG.DTYPE,
-    localModelPath = DEFAULT_CONFIG.LOCAL_MODEL_PATH,
-    modelCacheDir = DEFAULT_CONFIG.MODEL_CACHE_DIR,
     returnEmbedding = DEFAULT_CONFIG.RETURN_EMBEDDING,
     returnTokenLength = DEFAULT_CONFIG.RETURN_TOKEN_LENGTH,
     chunkPrefix = DEFAULT_CONFIG.CHUNK_PREFIX,
@@ -72,13 +68,11 @@ export async function chunkit(
     throw new Error("Input must be an array of document objects");
   }
 
-  // Initialize embedding utilities and set optional paths
-  const { modelName, dtype: usedDtype } = await initializeEmbeddingUtils(
-    onnxEmbeddingModel,
-    dtype,
-    localModelPath,
-    modelCacheDir
-  );
+  if (!model || typeof model.createEmbedding !== "function") {
+    throw new Error("A valid model instance must be provided");
+  }
+
+  const { modelName, dtype } = model.getModelInfo();
 
   // Process each document
   const allResults = await Promise.all(
@@ -105,6 +99,7 @@ export async function chunkit(
         await computeAdvancedSimilarities(sentences, {
           numSimilaritySentencesLookahead,
           logging,
+          model, // Pass the model to similarity computation
         });
 
       // Dynamically adjust the similarity threshold based on variance and average
@@ -120,12 +115,13 @@ export async function chunkit(
       }
 
       // Create the initial chunks using the adjusted threshold
-      const initialChunks = createChunks(
+      const initialChunks = await createChunks(
         sentences,
         similarities,
         maxTokenSize,
         dynamicThreshold,
-        logging
+        logging,
+        model
       );
 
       // Log initial chunks if needed
@@ -146,7 +142,7 @@ export async function chunkit(
       if (combineChunks) {
         finalChunks = await optimizeAndRebalanceChunks(
           initialChunks,
-          tokenizer,
+          model, // Use model's tokenizer
           maxTokenSize,
           combineChunksSimilarityThreshold
         );
@@ -177,19 +173,21 @@ export async function chunkit(
             number_of_chunks: numberOfChunks,
             chunk_number: index + 1,
             model_name: modelName,
-            dtype: usedDtype,
+            dtype: dtype,
             text: prefixedChunk,
           };
 
           if (returnEmbedding) {
-            result.embedding = await createEmbedding(prefixedChunk);
+            result.embedding = await model.createEmbedding(prefixedChunk);
           }
 
           if (returnTokenLength) {
             try {
-              const encoded = await tokenizer(prefixedChunk, { padding: true });
-              if (encoded && encoded.input_ids) {
-                result.token_length = encoded.input_ids.size;
+              const encoded = await model.tokenize(prefixedChunk, {
+                padding: true,
+              });
+              if (encoded && encoded.size) {
+                result.token_length = encoded.size;
               } else {
                 console.error("Tokenizer returned unexpected format:", encoded);
                 result.token_length = 0;
@@ -225,13 +223,10 @@ export async function chunkit(
 // --------------------------
 export async function cramit(
   documents,
+  model,
   {
     logging = DEFAULT_CONFIG.LOGGING,
     maxTokenSize = DEFAULT_CONFIG.MAX_TOKEN_SIZE,
-    onnxEmbeddingModel = DEFAULT_CONFIG.ONNX_EMBEDDING_MODEL,
-    dtype = DEFAULT_CONFIG.DTYPE,
-    localModelPath = DEFAULT_CONFIG.LOCAL_MODEL_PATH,
-    modelCacheDir = DEFAULT_CONFIG.MODEL_CACHE_DIR,
     returnEmbedding = DEFAULT_CONFIG.RETURN_EMBEDDING,
     returnTokenLength = DEFAULT_CONFIG.RETURN_TOKEN_LENGTH,
     chunkPrefix = DEFAULT_CONFIG.CHUNK_PREFIX,
@@ -247,13 +242,11 @@ export async function cramit(
     throw new Error("Input must be an array of document objects");
   }
 
-  // Initialize embedding utilities with paths
-  await initializeEmbeddingUtils(
-    onnxEmbeddingModel,
-    dtype,
-    localModelPath,
-    modelCacheDir
-  );
+  if (!model || typeof model.createEmbedding !== "function") {
+    throw new Error("A valid model instance must be provided");
+  }
+
+  const { modelName, dtype } = model.getModelInfo();
 
   // Process each document
   const allResults = await Promise.all(
@@ -266,7 +259,14 @@ export async function cramit(
       const sentences = await parseSentences(doc.document_text);
 
       // Create chunks without considering similarities
-      const chunks = createChunks(sentences, null, maxTokenSize, 0, logging);
+      const chunks = await createChunks(
+        sentences,
+        null,
+        maxTokenSize,
+        0,
+        logging,
+        model
+      );
 
       if (logging) {
         console.log("\nCRAMIT");
@@ -292,20 +292,22 @@ export async function cramit(
             document_name: documentName,
             number_of_chunks: numberOfChunks,
             chunk_number: index + 1,
-            model_name: onnxEmbeddingModel,
+            model_name: modelName,
             dtype: dtype,
             text: prefixedChunk,
           };
 
           if (returnEmbedding) {
-            result.embedding = await createEmbedding(prefixedChunk);
+            result.embedding = await model.createEmbedding(prefixedChunk);
           }
 
           if (returnTokenLength) {
             try {
-              const encoded = await tokenizer(prefixedChunk, { padding: true });
-              if (encoded && encoded.input_ids) {
-                result.token_length = encoded.input_ids.size;
+              const encoded = await model.tokenize(prefixedChunk, {
+                padding: true,
+              });
+              if (encoded && encoded.size) {
+                result.token_length = encoded.size;
               } else {
                 console.error("Tokenizer returned unexpected format:", encoded);
                 result.token_length = 0;
@@ -341,12 +343,9 @@ export async function cramit(
 // ------------------------------
 export async function sentenceit(
   documents,
+  model,
   {
     logging = DEFAULT_CONFIG.LOGGING,
-    onnxEmbeddingModel = DEFAULT_CONFIG.ONNX_EMBEDDING_MODEL,
-    dtype = DEFAULT_CONFIG.DTYPE,
-    localModelPath = DEFAULT_CONFIG.LOCAL_MODEL_PATH,
-    modelCacheDir = DEFAULT_CONFIG.MODEL_CACHE_DIR,
     returnEmbedding = DEFAULT_CONFIG.RETURN_EMBEDDING,
     returnTokenLength = DEFAULT_CONFIG.RETURN_TOKEN_LENGTH,
     chunkPrefix = DEFAULT_CONFIG.CHUNK_PREFIX,
@@ -362,13 +361,12 @@ export async function sentenceit(
     throw new Error("Input must be an array of document objects");
   }
 
-  if (returnEmbedding) {
-    // Initialize embedding utilities with paths
-    await initializeEmbeddingUtils(
-      onnxEmbeddingModel,
-      dtype,
-      localModelPath,
-      modelCacheDir
+  if (
+    returnEmbedding &&
+    (!model || typeof model.createEmbedding !== "function")
+  ) {
+    throw new Error(
+      "A valid model instance must be provided when returnEmbedding is true"
     );
   }
 
@@ -411,18 +409,19 @@ export async function sentenceit(
             text: prefixedChunk,
           };
 
-          if (returnEmbedding) {
-            result.model_name = onnxEmbeddingModel;
+          if (returnEmbedding && model) {
+            const { modelName, dtype } = model.getModelInfo();
+            result.model_name = modelName;
             result.dtype = dtype;
-            result.embedding = await createEmbedding(prefixedChunk);
+            result.embedding = await model.createEmbedding(prefixedChunk);
 
             if (returnTokenLength) {
               try {
-                const encoded = await tokenizer(prefixedChunk, {
+                const encoded = await model.tokenize(prefixedChunk, {
                   padding: true,
                 });
-                if (encoded && encoded.input_ids) {
-                  result.token_length = encoded.input_ids.size;
+                if (encoded && encoded.size) {
+                  result.token_length = encoded.size;
                 } else {
                   console.error(
                     "Tokenizer returned unexpected format:",
