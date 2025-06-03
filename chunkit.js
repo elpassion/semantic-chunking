@@ -10,7 +10,6 @@
 
 import { parseSentences } from "sentence-parse";
 import { DEFAULT_CONFIG } from "./config.js";
-import { EmbeddingModel } from "./embeddingUtils.js";
 import {
   computeAdvancedSimilarities,
   adjustThreshold,
@@ -21,6 +20,7 @@ import {
   applyPrefixToChunk,
 } from "./chunkingUtils.js";
 import { readFileSync } from "fs";
+export { LocalEmbeddingModel } from "./embeddingUtils.js";
 
 const packageJson = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url))
@@ -34,9 +34,6 @@ export async function printVersion() {
     `\n${"-".repeat(lineLength)}\n${versionText}\n${"-".repeat(lineLength)}`
   );
 }
-
-// Export the EmbeddingModel class for external initialization
-export { EmbeddingModel };
 
 // ---------------------------
 // -- Main chunkit function --

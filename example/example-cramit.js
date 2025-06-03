@@ -2,7 +2,7 @@
 // -- example-cramit.js --
 // --------------------------------------------------------------------------------
 // this is an example of how to use the cramit function
-// first we import the cramit function and EmbeddingModel class
+// first we import the cramit function and LocalEmbeddingModel class
 // then we initialize the model once
 // then we setup the documents array with a text
 // then we call the cramit function with the documents, model, and options object
@@ -12,7 +12,7 @@
 // useful for quickly chunking text, but not for exact semantic chunking
 // --------------------------------------------------------------------------------
 
-import { EmbeddingModel, cramit } from "../chunkit.js"; // this is typically just "import { EmbeddingModel, cramit } from 'semantic-chunking';", but this is a local test
+import { LocalEmbeddingModel, cramit } from "../chunkit.js"; // this is typically just "import { LocalEmbeddingModel, cramit } from 'semantic-chunking';", but this is a local test
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
@@ -37,7 +37,7 @@ for (const textFile of textFiles) {
 const startTime = performance.now();
 
 // Initialize the model once
-const model = new EmbeddingModel();
+const model = new LocalEmbeddingModel();
 await model.initialize(
   "nomic-ai/nomic-embed-text-v1.5", // model name
   "q8", // dtype

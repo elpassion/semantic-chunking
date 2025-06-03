@@ -2,7 +2,7 @@
 // -- example-sentenceit.js --
 // --------------------------------------------------------------------------------
 // this is an example of how to use the sentenceit function
-// first we import the sentenceit function and EmbeddingModel class
+// first we import the sentenceit function and LocalEmbeddingModel class
 // then we initialize the model once
 // then we setup the documents array with a text
 // then we call the sentenceit function with the documents, model, and options object
@@ -12,7 +12,7 @@
 // useful for splitting text into individual sentences with semantic understanding
 // --------------------------------------------------------------------------------
 
-import { EmbeddingModel, sentenceit } from "../chunkit.js"; // this is typically just "import { EmbeddingModel, sentenceit } from 'semantic-chunking';", but this is a local test
+import { LocalEmbeddingModel, sentenceit } from "../chunkit.js"; // this is typically just "import { LocalEmbeddingModel, sentenceit } from 'semantic-chunking';", but this is a local test
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
@@ -37,7 +37,7 @@ for (const textFile of textFiles) {
 const startTime = performance.now();
 
 // Initialize the model once
-const model = new EmbeddingModel();
+const model = new LocalEmbeddingModel();
 await model.initialize(
   "Xenova/all-MiniLM-L6-v2", // model name
   "fp32", // dtype

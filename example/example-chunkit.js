@@ -2,14 +2,14 @@
 // -- example-chunkit.js --
 // -------------------------------------------------------------------------------
 // this is an example of how to use the chunkit function
-// first we import the chunkit function and EmbeddingModel class
+// first we import the chunkit function and LocalEmbeddingModel class
 // then we initialize the model once
 // then we setup the documents array with text files
 // then we call the chunkit function with the documents array, model, and options object
 // the options object is optional, use it to customize the chunking process
 // -------------------------------------------------------------------------------
 
-import { EmbeddingModel, chunkit } from "../chunkit.js"; // this is typically just "import { EmbeddingModel, chunkit } from 'semantic-chunking';", but this is a local test
+import { LocalEmbeddingModel, chunkit } from "../chunkit.js"; // this is typically just "import { LocalEmbeddingModel, chunkit } from 'semantic-chunking';", but this is a local test
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
@@ -36,7 +36,7 @@ for (const textFile of textFiles) {
 const startTime = performance.now();
 
 // Initialize the model once
-const model = new EmbeddingModel();
+const model = new LocalEmbeddingModel();
 await model.initialize(
   "Xenova/all-MiniLM-L6-v2", // model name
   "q8", // dtype

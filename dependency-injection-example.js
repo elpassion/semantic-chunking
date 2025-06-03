@@ -1,11 +1,11 @@
-import { EmbeddingModel, chunkit } from "./chunkit.js";
+import { LocalEmbeddingModel, chunkit } from "./chunkit.js";
 
 // Example demonstrating dependency injection with semantic chunking
 
 async function main() {
   try {
     // Create and initialize the model outside of the chunking function
-    const model = new EmbeddingModel();
+    const model = new LocalEmbeddingModel();
     await model.initialize(
       "Xenova/all-MiniLM-L6-v2", // Model name
       "q8", // Data type

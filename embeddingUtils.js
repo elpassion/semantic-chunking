@@ -2,9 +2,9 @@ import { env, pipeline, AutoTokenizer } from "@huggingface/transformers";
 import { LRUCache } from "lru-cache";
 
 // --------------------------
-// -- EmbeddingModel class --
+// -- LocalEmbeddingModel class --
 // --------------------------
-export class EmbeddingModel {
+export class LocalEmbeddingModel {
   constructor() {
     this.tokenizer = null;
     this.generateEmbedding = null;

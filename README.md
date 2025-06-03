@@ -42,10 +42,10 @@ npm install semantic-chunking
 All functions now require a pre-initialized model instance for better performance and flexibility:
 
 ```javascript
-import { EmbeddingModel, chunkit } from 'semantic-chunking';
+import { LocalEmbeddingModel, chunkit } from 'semantic-chunking';
 
 // Initialize the model once
-const model = new EmbeddingModel();
+const model = new LocalEmbeddingModel();
 await model.initialize('Xenova/all-MiniLM-L6-v2');
 
 const documents = [
@@ -62,20 +62,20 @@ const myChunks = await chunkit(documents, model, {
 
 **NOTE** 🚨 The Embedding model will be downloaded to your specified cache directory the first time it is run (file size will depend on the specified model; see the model's table below).
 
-## EmbeddingModel Class
+## LocalEmbeddingModel Class
 
-The `EmbeddingModel` class manages model initialization and provides embedding/tokenization functionality:
+The `LocalEmbeddingModel` class manages model initialization and provides embedding/tokenization functionality:
 
 ```javascript
-import { EmbeddingModel } from 'semantic-chunking';
+import { LocalEmbeddingModel } from "semantic-chunking";
 
 // Create and initialize the model
-const model = new EmbeddingModel();
+const model = new LocalEmbeddingModel();
 await model.initialize(
-  'Xenova/all-MiniLM-L6-v2',  // Model name
-  'q8',                        // Data type (fp32, fp16, q8, q4)
-  './models',                  // Local model path (optional)
-  './models'                   // Model cache directory (optional)
+  "Xenova/all-MiniLM-L6-v2", // Model name
+  "q8", // Data type (fp32, fp16, q8, q4)
+  "./models", // Local model path (optional)
+  "./models" // Model cache directory (optional)
 );
 
 // Get model information
@@ -93,7 +93,7 @@ const tokens = await model.tokenize("sample text", { padding: true });
 ### chunkit(documents, model, options)
 
 - `documents`: Array of documents. Each document is an object containing `document_name` and `document_text`.
-- `model`: An initialized `EmbeddingModel` instance.
+- `model`: An initialized `LocalEmbeddingModel` instance.
 - `options`: Configuration object with the following properties:
 
   - `logging`: Boolean (optional, default `false`) - Enables logging of detailed processing steps.
@@ -134,29 +134,29 @@ It is highly recommended to tweak all the parameters using the Web UI to get the
 Example 1: Basic usage with custom similarity threshold:
 
 ```javascript
-import { EmbeddingModel, chunkit } from 'semantic-chunking';
-import fs from 'fs';
+import { LocalEmbeddingModel, chunkit } from "semantic-chunking";
+import fs from "fs";
 
 async function main() {
-    // Initialize model
-    const model = new EmbeddingModel();
-    await model.initialize('Xenova/all-MiniLM-L6-v2');
-  
-    const documents = [ 
-        {
-            document_name: "test document", 
-            document_text: await fs.promises.readFile('./test.txt', 'utf8') 
-        }
-    ];
-  
-    let myChunks = await chunkit(documents, model, { 
-        similarityThreshold: 0.4 
-    });
+  // Initialize model
+  const model = new LocalEmbeddingModel();
+  await model.initialize("Xenova/all-MiniLM-L6-v2");
 
-    myChunks.forEach((chunk, index) => {
-        console.log(`\n-- Chunk ${index + 1} --`);
-        console.log(chunk);
-    });
+  const documents = [
+    {
+      document_name: "test document",
+      document_text: await fs.promises.readFile("./test.txt", "utf8"),
+    },
+  ];
+
+  let myChunks = await chunkit(documents, model, {
+    similarityThreshold: 0.4,
+  });
+
+  myChunks.forEach((chunk, index) => {
+    console.log(`\n-- Chunk ${index + 1} --`);
+    console.log(chunk);
+  });
 }
 main();
 ```
@@ -164,25 +164,26 @@ main();
 Example 2: Chunking with a small max token size:
 
 ```javascript
-import { EmbeddingModel, chunkit } from 'semantic-chunking';
+import { LocalEmbeddingModel, chunkit } from "semantic-chunking";
 
-const frogText = "A frog hops into a deli and croaks to the cashier, \"I'll have a sandwich, please.\" The cashier, surprised, quickly makes the sandwich and hands it over. The frog takes a big bite, looks around, and then asks, \"Do you have any flies to go with this?\" The cashier, taken aback, replies, \"Sorry, we're all out of flies today.\" The frog shrugs and continues munching on its sandwich, clearly unfazed by the lack of fly toppings. Just another day in the life of a sandwich-loving amphibian! 🐸🥪";
+const frogText =
+  'A frog hops into a deli and croaks to the cashier, "I\'ll have a sandwich, please." The cashier, surprised, quickly makes the sandwich and hands it over. The frog takes a big bite, looks around, and then asks, "Do you have any flies to go with this?" The cashier, taken aback, replies, "Sorry, we\'re all out of flies today." The frog shrugs and continues munching on its sandwich, clearly unfazed by the lack of fly toppings. Just another day in the life of a sandwich-loving amphibian! 🐸🥪';
 
 const documents = [
-    {
-        document_name: "frog document",
-        document_text: frogText
-    }
+  {
+    document_name: "frog document",
+    document_text: frogText,
+  },
 ];
 
 async function main() {
-    const model = new EmbeddingModel();
-    await model.initialize('Xenova/all-MiniLM-L6-v2');
-  
-    let myFrogChunks = await chunkit(documents, model, { 
-        maxTokenSize: 65 
-    });
-    console.log("myFrogChunks", myFrogChunks);
+  const model = new LocalEmbeddingModel();
+  await model.initialize("Xenova/all-MiniLM-L6-v2");
+
+  let myFrogChunks = await chunkit(documents, model, {
+    maxTokenSize: 65,
+  });
+  console.log("myFrogChunks", myFrogChunks);
 }
 main();
 ```
@@ -190,26 +191,26 @@ main();
 Example 3: Reusing model across multiple operations:
 
 ```javascript
-import { EmbeddingModel, chunkit, cramit } from 'semantic-chunking';
+import { LocalEmbeddingModel, chunkit, cramit } from "semantic-chunking";
 
 async function processMultipleDocumentSets() {
   // Initialize model once
-  const model = new EmbeddingModel();
-  await model.initialize('Xenova/all-MiniLM-L6-v2', 'q8');
-  
+  const model = new LocalEmbeddingModel();
+  await model.initialize("Xenova/all-MiniLM-L6-v2", "q8");
+
   // Process first set of documents
   const set1 = [{ document_name: "doc1", document_text: "..." }];
   const chunks1 = await chunkit(set1, model, {
     maxTokenSize: 500,
-    similarityThreshold: 0.5
+    similarityThreshold: 0.5,
   });
-  
+
   // Process second set with different settings, reusing the same model
   const set2 = [{ document_name: "doc2", document_text: "..." }];
   const chunks2 = await cramit(set2, model, {
-    maxTokenSize: 300
+    maxTokenSize: 300,
   });
-  
+
   return { chunks1, chunks2 };
 }
 ```
@@ -294,8 +295,8 @@ The behavior of the `chunkit` function can be finely tuned using several optiona
 
 #### Curated ONNX Embedding Models
 
-| Model                                        | Precision      | Link                                                                                                                                    | Size                   |
-| -------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Model                                        | Precision      | Link                                                                                                                                       | Size                   |
+| -------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
 | nomic-ai/nomic-embed-text-v1.5               | fp32, q8       | [https://huggingface.co/nomic-ai/nomic-embed-text-v1.5](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5)                             | 548 MB, 138 MB         |
 | thenlper/gte-base                            | fp32           | [https://huggingface.co/thenlper/gte-base](https://huggingface.co/thenlper/gte-base)                                                       | 436 MB                 |
 | Xenova/all-MiniLM-L6-v2                      | fp32, fp16, q8 | [https://huggingface.co/Xenova/all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2)                                           | 23 MB, 45 MB, 90 MB    |
@@ -333,7 +334,7 @@ There is an additional function you can import to just "cram" sentences together
 ### cramit(documents, model, options)
 
 - `documents`: Array of documents. Each document is an object containing `document_name` and `document_text`.
-- `model`: An initialized `EmbeddingModel` instance.
+- `model`: An initialized `LocalEmbeddingModel` instance.
 - `options`: Configuration object with the following properties:
 
   - `logging`: Boolean (optional, default `false`) - Enables logging of detailed processing steps.
@@ -346,24 +347,25 @@ There is an additional function you can import to just "cram" sentences together
 Basic usage:
 
 ```javascript
-import { EmbeddingModel, cramit } from 'semantic-chunking';
+import { LocalEmbeddingModel, cramit } from "semantic-chunking";
 
-let frogText = "A frog hops into a deli and croaks to the cashier, \"I'll have a sandwich, please.\" The cashier, surprised, quickly makes the sandwich and hands it over. The frog takes a big bite, looks around, and then asks, \"Do you have any flies to go with this?\" The cashier, taken aback, replies, \"Sorry, we're all out of flies today.\" The frog shrugs and continues munching on its sandwich, clearly unfazed by the lack of fly toppings. Just another day in the life of a sandwich-loving amphibian! 🐸🥪";
+let frogText =
+  'A frog hops into a deli and croaks to the cashier, "I\'ll have a sandwich, please." The cashier, surprised, quickly makes the sandwich and hands it over. The frog takes a big bite, looks around, and then asks, "Do you have any flies to go with this?" The cashier, taken aback, replies, "Sorry, we\'re all out of flies today." The frog shrugs and continues munching on its sandwich, clearly unfazed by the lack of fly toppings. Just another day in the life of a sandwich-loving amphibian! 🐸🥪';
 
 // initialize documents array and add the frog text to it
 let documents = [];
 documents.push({
-    document_name: "frog document",
-    document_text: frogText
+  document_name: "frog document",
+  document_text: frogText,
 });
 
 // call the cramit function passing in the documents array, model, and options object
 async function main() {
-    const model = new EmbeddingModel();
-    await model.initialize('Xenova/all-MiniLM-L6-v2');
-  
-    let myFrogChunks = await cramit(documents, model, { maxTokenSize: 65 });
-    console.log("myFrogChunks", myFrogChunks);
+  const model = new LocalEmbeddingModel();
+  await model.initialize("Xenova/all-MiniLM-L6-v2");
+
+  let myFrogChunks = await cramit(documents, model, { maxTokenSize: 65 });
+  console.log("myFrogChunks", myFrogChunks);
 }
 main();
 ```
@@ -377,7 +379,7 @@ There is an additional function you can import to just split sentences.
 ### sentenceit(documents, model, options)
 
 - `documents`: Array of documents. Each document is an object containing `document_name` and `document_text`.
-- `model`: An initialized `EmbeddingModel` instance (required only if `returnEmbedding` is true).
+- `model`: An initialized `LocalEmbeddingModel` instance (required only if `returnEmbedding` is true).
 - `options`: Configuration object with the following properties:
 
   - `logging`: Boolean (optional, default `false`) - Enables logging of detailed processing steps.
@@ -389,24 +391,27 @@ There is an additional function you can import to just split sentences.
 Basic usage:
 
 ```javascript
-import { EmbeddingModel, sentenceit } from 'semantic-chunking';
+import { LocalEmbeddingModel, sentenceit } from "semantic-chunking";
 
-let duckText = "A duck waddles into a bakery and quacks to the baker, \"I'll have a loaf of bread, please.\" The baker, amused, quickly wraps the loaf and hands it over. The duck takes a nibble, looks around, and then asks, \"Do you have any seeds to go with this?\" The baker, chuckling, replies, \"Sorry, we're all out of seeds today.\" The duck nods and continues nibbling on its bread, clearly unfazed by the lack of seed toppings. Just another day in the life of a bread-loving waterfowl! 🦆🍞";
+let duckText =
+  'A duck waddles into a bakery and quacks to the baker, "I\'ll have a loaf of bread, please." The baker, amused, quickly wraps the loaf and hands it over. The duck takes a nibble, looks around, and then asks, "Do you have any seeds to go with this?" The baker, chuckling, replies, "Sorry, we\'re all out of seeds today." The duck nods and continues nibbling on its bread, clearly unfazed by the lack of seed toppings. Just another day in the life of a bread-loving waterfowl! 🦆🍞';
 
 // initialize documents array and add the duck text to it
 let documents = [];
 documents.push({
-    document_name: "duck document",
-    document_text: duckText
+  document_name: "duck document",
+  document_text: duckText,
 });
 
 // call the sentenceit function passing in the documents array, model, and options object
 async function main() {
-    const model = new EmbeddingModel();
-    await model.initialize('Xenova/all-MiniLM-L6-v2');
-  
-    let myDuckChunks = await sentenceit(documents, model, { returnEmbedding: true });
-    console.log("myDuckChunks", myDuckChunks);
+  const model = new LocalEmbeddingModel();
+  await model.initialize("Xenova/all-MiniLM-L6-v2");
+
+  let myDuckChunks = await sentenceit(documents, model, {
+    returnEmbedding: true,
+  });
+  console.log("myDuckChunks", myDuckChunks);
 }
 main();
 ```
@@ -429,39 +434,40 @@ If you are using this library for a RAG application, consider using the `chunkPr
 Chunk your large document like this:
 
 ```javascript
-import { EmbeddingModel, chunkit } from 'semantic-chunking';
-import fs from 'fs';
+import { LocalEmbeddingModel, chunkit } from "semantic-chunking";
+import fs from "fs";
 
-const model = new EmbeddingModel();
-await model.initialize('Xenova/all-MiniLM-L6-v2');
+const model = new LocalEmbeddingModel();
+await model.initialize("Xenova/all-MiniLM-L6-v2");
 
-const largeDocumentText = await fs.promises.readFile('./large-document.txt', 'utf8');
-const documents = [ 
-    {
-        document_name: "large document",
-        document_text: largeDocumentText
-    }
+const largeDocumentText = await fs.promises.readFile(
+  "./large-document.txt",
+  "utf8"
+);
+const documents = [
+  {
+    document_name: "large document",
+    document_text: largeDocumentText,
+  },
 ];
-const myDocumentChunks = await chunkit(documents, model, { 
-    chunkPrefix: "search_document", 
-    returnEmbedding: true 
+const myDocumentChunks = await chunkit(documents, model, {
+  chunkPrefix: "search_document",
+  returnEmbedding: true,
 });
 ```
 
 Get your search queries ready like this (use cramit for a quick large chunk):
 
 ```javascript
-import { EmbeddingModel, cramit } from 'semantic-chunking';
+import { LocalEmbeddingModel, cramit } from "semantic-chunking";
 
-const model = new EmbeddingModel();
-await model.initialize('Xenova/all-MiniLM-L6-v2');
+const model = new LocalEmbeddingModel();
+await model.initialize("Xenova/all-MiniLM-L6-v2");
 
-const documents = [
-    { document_text: "What is the capital of France?" } 
-];
-const mySearchQueryChunk = await cramit(documents, model, { 
-    chunkPrefix: "search_query", 
-    returnEmbedding: true 
+const documents = [{ document_text: "What is the capital of France?" }];
+const mySearchQueryChunk = await cramit(documents, model, {
+  chunkPrefix: "search_query",
+  returnEmbedding: true,
 });
 ```
 
